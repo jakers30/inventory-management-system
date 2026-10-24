@@ -33,3 +33,6 @@ bin/
 /InventoryManagementSystem/
 
 /build/
+
+### Scratch console demo harness (test/inventory/ConsoleDemo.java), local only ###
+/test/
