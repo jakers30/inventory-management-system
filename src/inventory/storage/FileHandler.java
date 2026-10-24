@@ -9,6 +9,9 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 
 /**
  * Reads and writes the plain text files in the {@code data/} folder.
@@ -72,6 +75,67 @@ public class FileHandler {
             }
         } catch (IOException e) {
             throw new InventoryException("Could not save the data file: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Writes the products to the given file as a CSV report.
+     *
+     * <p>The file starts with the header {@code ID,Product,Category,Price,Quantity,Status},
+     * then one line per product in the order the array arrives (so the report keeps the
+     * table's current filter and sort), and finally a summary block with the total
+     * number of products, the total value, the low stock count, the out of stock count
+     * and the date and time the report was written. The summary describes exactly the
+     * products that were written, so a filtered export adds up to the filtered rows.</p>
+     */
+    public void writeReport(File file, Product[] products) throws InventoryException {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+            writer.write("ID,Product,Category,Price,Quantity,Status");
+            writer.newLine();
+
+            double totalValue = 0;
+            int lowStockCount = 0;
+            int outOfStockCount = 0;
+            for (int i = 0; i < products.length; i++) {
+                Product product = products[i];
+                writer.write(csvField(product.getId()));
+                writer.write(',');
+                writer.write(csvField(product.getName()));
+                writer.write(',');
+                writer.write(csvField(product.getCategory()));
+                writer.write(',');
+                writer.write(String.format(Locale.US, "%.2f", product.getPrice()));
+                writer.write(',');
+                writer.write(String.valueOf(product.getQuantity()));
+                writer.write(',');
+                writer.write(statusOf(product));
+                writer.newLine();
+
+                totalValue += product.getStockValue();
+                if (product.isLowStock()) {
+                    lowStockCount++;
+                }
+                if (product.getQuantity() == 0) {
+                    outOfStockCount++;
+                }
+            }
+
+            writer.newLine();
+            writer.write("Summary");
+            writer.newLine();
+            writer.write("Total products," + products.length);
+            writer.newLine();
+            writer.write("Total value," + String.format(Locale.US, "%.2f", totalValue));
+            writer.newLine();
+            writer.write("Low stock count," + lowStockCount);
+            writer.newLine();
+            writer.write("Out of stock count," + outOfStockCount);
+            writer.newLine();
+            writer.write("Generated," + LocalDateTime.now().format(
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            writer.newLine();
+        } catch (IOException e) {
+            throw new InventoryException("Could not write the report file: " + e.getMessage());
         }
     }
 
@@ -163,6 +227,29 @@ public class FileHandler {
             result[i] = transactions[i];
         }
         return result;
+    }
+
+    /**
+     * Wraps a CSV field in quotes when it holds a comma, a quote or a line break,
+     * doubling any quotes inside it so the file stays readable by spreadsheets.
+     */
+    private String csvField(String value) {
+        if (value == null) {
+            return "";
+        }
+        if (value.indexOf(',') < 0 && value.indexOf('"') < 0
+                && value.indexOf('\n') < 0 && value.indexOf('\r') < 0) {
+            return value;
+        }
+        return '"' + value.replace("\"", "\"\"") + '"';
+    }
+
+    /** Same three words the table shows in its Status column: Out, Low, OK. */
+    private String statusOf(Product product) {
+        if (product.getQuantity() == 0) {
+            return "Out";
+        }
+        return product.isLowStock() ? "Low" : "OK";
     }
 
     /** Creates data/ and the two files when they are missing. */

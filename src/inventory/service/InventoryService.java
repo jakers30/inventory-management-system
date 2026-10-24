@@ -9,6 +9,7 @@ import inventory.storage.FileHandler;
 import inventory.structures.ProductHashTable;
 import inventory.structures.ProductLinkedList;
 import inventory.structures.TransactionStack;
+import java.io.File;
 
 /**
  * The only class the GUI talks to. It owns the three data structures, applies
@@ -389,6 +390,17 @@ public class InventoryService {
     public void save() throws InventoryException {
         storage.saveProducts(products.toArray());
         storage.saveTransactionsNewestFirst(history.toArray());
+    }
+
+    /**
+     * Writes the products that are on screen to a CSV report at the chosen file.
+     *
+     * <p>The rows are written in the order they arrive, so whatever search, filter
+     * or sort the table is showing is exactly what the report contains. Nothing in
+     * memory changes: this only reads the array it is given.</p>
+     */
+    public void exportReport(Product[] products, File file) throws InventoryException {
+        storage.writeReport(file, products);
     }
 
     /**

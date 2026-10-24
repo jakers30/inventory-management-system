@@ -18,10 +18,12 @@ import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.File;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
@@ -117,7 +119,9 @@ public class MainFrame extends JFrame {
             }
         });
 
-        setMinimumSize(new Dimension(900, 600));
+        // The control band needs about 950 px before the search row would wrap, so the
+        // minimum is set with a little slack for the four buttons on the stock row.
+        setMinimumSize(new Dimension(980, 600));
         setSize(1000, 660);
         setLocationRelativeTo(null);
 
@@ -294,6 +298,7 @@ public class MainFrame extends JFrame {
         firstRow.add(createButton("Stock In", NEUTRAL_COLOR, () -> onStockIn()));
         firstRow.add(createButton("Stock Out", NEUTRAL_COLOR, () -> onStockOut()));
         firstRow.add(createButton("Undo", NEUTRAL_COLOR, () -> onUndo()));
+        firstRow.add(createButton("Export Report", NEUTRAL_COLOR, () -> onExport()));
 
         JPanel secondRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 2));
         secondRow.add(createButton("Read", READ_COLOR, () -> onRead()));
@@ -455,6 +460,27 @@ public class MainFrame extends JFrame {
             showInfo(message);
         } catch (InventoryException ex) {
             showError(ex.getMessage());
+        }
+    }
+
+    /**
+     * Export Report: writes the rows the table is showing right now, so the active
+     * search, the Low-Stock Only filter and the current sort all carry into the file.
+     */
+    private void onExport() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Export Report");
+        chooser.setSelectedFile(new File("inventory_report.csv"));
+        if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        File file = chooser.getSelectedFile();
+        try {
+            service.exportReport(displayedProducts, file);
+            showInfo("Report exported to " + file.getAbsolutePath() + System.lineSeparator()
+                    + displayedProducts.length + " product(s) written.");
+        } catch (InventoryException ex) {
+            showError("The report could not be exported. " + ex.getMessage());
         }
     }
 
