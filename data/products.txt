@@ -1,0 +1,10 @@
+P001|Notebook A5|Stationery|120|2.5|30
+P002|Ballpoint Pen Blue|Stationery|8|0.8|25
+P003|A4 Copy Paper Ream|Stationery|57|4.2|15
+P004|Wireless Mouse|Electronics|23|18.9|10
+P005|USB-C Cable 1m|Electronics|6|7.5|12
+P006|Desk Lamp LED|Electronics|14|24.0|5
+P007|Office Chair Mesh|Furniture|5|85.0|3
+P008|Standing Desk 120cm|Furniture|2|199.9|4
+P009|Whiteboard Marker|Stationery|60|1.2|20
+P010|Ethernet Cable 3m|Electronics|9|6.4|15
