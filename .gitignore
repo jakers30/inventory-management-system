@@ -34,5 +34,8 @@ bin/
 
 /build/
 
+### Prebuilt packages handed in (A_jar, B_app, zip) - too large for git ###
+/release/
+
 ### Scratch console demo harness (test/inventory/ConsoleDemo.java), local only ###
 /test/

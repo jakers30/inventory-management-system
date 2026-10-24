@@ -69,6 +69,25 @@ The program must be started from the project folder (the folder that contains
 `data/`), otherwise the storage layer creates a new empty `data/` folder next to
 the current working directory.
 
+### Prebuilt packages (submission copy)
+
+The folder handed in for grading also carries two ready-to-run builds in
+`release/`. They are not part of this git repository (the bundled runtime makes
+them about 25 MB), and `ant clean` only deletes `build/` and `dist/`, so they
+stay in place:
+
+* `release/A_jar/` - the JAR plus `run.bat` (Java version check, then
+  `java -jar`) and a clean `data/` folder. Needs Java 21 or newer.
+* `release/B_app/` - a `jpackage` app image with its own Java 21 runtime, so it
+  starts on a machine that has no Java installed at all.
+* `release/InventoryManagementSystem.zip` - both folders plus the end-user
+  `README.txt`, packed for hand-in.
+* `release/README.txt` - the same text that ships inside the zip.
+
+Extract the zip before running anything: a file launched from the Explorer zip
+view is copied to a temporary folder on its own, so `data/` is missing and the
+table comes up empty.
+
 ---
 
 ## 2. What the program does
@@ -161,6 +180,8 @@ InventoryManagementSystem/
       ProductDialog.java         add / update form
       StockDialog.java           stock in / out form
       HistoryDialog.java         transaction history + undo
+  release/                       prebuilt A_jar / B_app / zip for hand-in
+                                 (local only, not in git)
 ```
 
 The GUI never touches the linked list, the hash table or the files. It collects
