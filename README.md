@@ -85,8 +85,8 @@ the current working directory.
 | **Search** | By name or category (partial, case-insensitive, linear search) or by exact ID (binary search on an ID-sorted copy) |
 | **Sort** | By ID, Name, Quantity or Price, ascending or descending (insertion sort on a copy) |
 | **Low-stock highlight** | Rows whose `quantity <= reorderLevel` are painted red and counted in the status bar |
-| **Total inventory value** | Status bar shows item count, total value (`sum of quantity * price`) and low-stock count |
-| **Save / Load** | Menu `File > Save Data`, `File > Reload Data`; the data is also loaded at startup and saved when the window is closed |
+| **Total inventory value** | Status bar reads `Total Inventory Value: P0.00 \| Items: 0 \| Low: 0` (value = `sum of quantity * price`) |
+| **Save / Load** | Menu `File > Save`, `File > Load`; the data is also loaded at startup and saved when the window is closed |
 
 ---
 
@@ -96,7 +96,7 @@ the current working directory.
 
 | Window | Class | Contents |
 |---|---|---|
-| Main window | `MainFrame` (`JFrame`) | search + sort bar, product table, action buttons, status bar, menu bar |
+| Main window | `MainFrame` (`JFrame`) | search + sort bar, product table, five action buttons (Add, Update, Delete, Stock In, Stock Out), status bar, menu bar |
 | Add / Update | `ProductDialog` (`JDialog`, modal) | ID, Name, Category, Quantity, Price, Reorder Level, Save / Cancel (ID and Quantity become read-only in Update mode) |
 | Stock In / Stock Out | `StockDialog` (`JDialog`, modal) | read-only product ID, name and quantity, amount field, Stock In / Stock Out and Cancel buttons |
 | Transaction history | `HistoryDialog` (`JDialog`, modal) | the stack newest first, Undo Last Action / Close, row counter |
@@ -105,23 +105,25 @@ the current working directory.
 
 | Menu | Items |
 |---|---|
-| **File** | Save Data (Ctrl+S), Reload Data (Ctrl+R), Exit (Ctrl+Q) |
-| **Edit** | Add Product (Ctrl+N), Update Product (Ctrl+U), Delete Product (Ctrl+D), Undo Last Action (Ctrl+Z) |
-| **View** | Show All Products (Ctrl+A), Low-Stock Only (Ctrl+L) |
-| **Tools** | Stock In (Ctrl+I), Stock Out (Ctrl+O), Transaction History (Ctrl+H) |
+| **File** | Save (Ctrl+S), Load (Ctrl+R), Exit (Ctrl+Q) |
+| **Inventory** | Add Product (Ctrl+N), Update Product (Ctrl+U), Delete Product (Ctrl+D) |
+| **Stock** | Stock In (Ctrl+I), Stock Out (Ctrl+O), Undo Last Action (Ctrl+Z) |
+| **View** | Transaction History (Ctrl+H), Show All (Ctrl+A), Low-Stock Only (Ctrl+L) |
 
 ### Typical workflow
 
 1. Start the program - the products from `data/products.txt` appear in the table.
-2. Add a product with **Add Product**; a duplicate ID or bad number is reported in
-   a message box and the dialog stays open.
+2. Add a product with **Inventory > Add Product** (or the **Add** button); a
+   duplicate ID or bad number is reported in a message box and the dialog stays
+   open.
 3. Change stock with **Stock In** / **Stock Out**; taking out more than the
    quantity on hand is refused ("Not enough stock: ...").
-4. Made a mistake? **Undo Last Action** reverses the newest action, and the
-   history dialog shows both the reversal and the original row marked as undone.
+4. Made a mistake? **Stock > Undo Last Action** (or the button inside the history
+   dialog) reverses the newest action, and the history dialog shows both the
+   reversal and the original row marked as undone.
 5. Search or sort; the table shows the result and **Show All** returns to the
    complete list.
-6. Close the window (or **File > Save Data**) to write both text files.
+6. Close the window (or **File > Save**) to write both text files.
 
 ---
 
@@ -388,7 +390,7 @@ Every value is `trim()`ed before it is validated, and every failure throws an
   `JOptionPane.showMessageDialog(..., ERROR_MESSAGE)`.
 * An `IOException` in `FileHandler` becomes
   "Could not save the data file: ..." or "Could not load the data file: ...".
-* Delete asks for confirmation first, and `File > Reload Data` asks before it
+* Delete asks for confirmation first, and `File > Load` asks before it
   replaces the current data.
 * Empty states are handled: nothing to undo, no search result, empty table and
   sorting an empty inventory all produce a message or a no-op, never a crash.

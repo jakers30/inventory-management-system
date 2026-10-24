@@ -8,7 +8,9 @@ import inventory.service.InventoryService;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -18,6 +20,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -47,12 +50,33 @@ public class MainFrame extends JFrame {
 
     private static final long serialVersionUID = 1L;
 
-    private static final String[] COLUMNS = {"ID", "Name", "Category", "Quantity", "Price", "Reorder Level"};
+    /** Table order of the design; Reorder Level is shown in the dialogs only. */
+    private static final String[] COLUMNS = {"ID", "Product", "Category", "Price", "Quantity", "Status"};
     private static final String[] SEARCH_TYPES = {"Name", "Category", "Product ID"};
     private static final String[] SORT_ORDERS = {"Ascending", "Descending"};
 
+    private static final int PRICE_COLUMN = 3;
+    private static final int QUANTITY_COLUMN = 4;
+    private static final int STATUS_COLUMN = 5;
+
     private static final Color LOW_STOCK_BACKGROUND = new Color(255, 228, 225);
     private static final Color LOW_STOCK_FOREGROUND = new Color(150, 20, 20);
+
+    // Restyle palette - change these to re-theme the window (see INVENTORY_UI_RESTYLE.md).
+    private static final Color READ_COLOR = new Color(0xE8772E);
+    private static final Color DELETE_COLOR = new Color(0xE41E4D);
+    private static final Color EDIT_COLOR = new Color(0x2D5FE0);
+    private static final Color ADD_COLOR = new Color(0x10B981);
+    private static final Color NEUTRAL_COLOR = new Color(0x475569);
+    private static final Color CARD_GREEN = new Color(0xE6F7EF);
+    private static final Color CARD_BLUE = new Color(0xE8F0FE);
+    private static final Color CARD_RED = new Color(0xFDE8EC);
+    private static final Color CARD_AMBER = new Color(0xFFF4E0);
+    private static final Color CARD_GREEN_TEXT = new Color(0x059669);
+    private static final Color CARD_BLUE_TEXT = new Color(0x1A47C0);
+    private static final Color CARD_RED_TEXT = new Color(0xB31241);
+    private static final Color CARD_AMBER_TEXT = new Color(0xB45309);
+    private static final Color CARD_TITLE_TEXT = new Color(0x555F6D);
 
     private final InventoryService service;
     private final DefaultTableModel tableModel;
@@ -65,9 +89,13 @@ public class MainFrame extends JFrame {
     private JTextField searchField;
     private JComboBox<String> sortFieldCombo;
     private JComboBox<String> sortOrderCombo;
-    private JLabel itemsLabel;
+    private JCheckBox lowStockOnlyCheck;
+
+    /** The four stat cards, refreshed with the table. */
+    private JLabel productCountLabel;
     private JLabel valueLabel;
     private JLabel lowStockLabel;
+    private JLabel outOfStockLabel;
 
     private String startupNotice;
 
@@ -89,8 +117,8 @@ public class MainFrame extends JFrame {
             }
         });
 
-        setMinimumSize(new java.awt.Dimension(820, 460));
-        setSize(980, 560);
+        setMinimumSize(new Dimension(900, 600));
+        setSize(1000, 660);
         setLocationRelativeTo(null);
 
         if (startupNotice != null) {
@@ -116,11 +144,15 @@ public class MainFrame extends JFrame {
     }
 
     private void buildUi() {
-        JPanel content = new JPanel(new BorderLayout(8, 8));
-        content.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-        content.add(buildSearchAndSortPanel(), BorderLayout.NORTH);
+        JPanel content = new JPanel(new BorderLayout(10, 10));
+        content.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+
+        JPanel top = new JPanel(new BorderLayout(10, 10));
+        top.add(buildStatCardsPanel(), BorderLayout.NORTH);
+        top.add(buildControlBandPanel(), BorderLayout.CENTER);
+
+        content.add(top, BorderLayout.NORTH);
         content.add(buildTablePanel(), BorderLayout.CENTER);
-        content.add(buildActionsAndStatusPanel(), BorderLayout.SOUTH);
         setContentPane(content);
         setJMenuBar(buildMenuBar());
     }
@@ -134,75 +166,91 @@ public class MainFrame extends JFrame {
 
         JMenu fileMenu = new JMenu("File");
         fileMenu.setMnemonic(KeyEvent.VK_F);
-        fileMenu.add(createMenuItem("Save Data", KeyEvent.VK_S, () -> onSave()));
-        fileMenu.add(createMenuItem("Reload Data", KeyEvent.VK_R, () -> onLoad()));
+        fileMenu.add(createMenuItem("Save", KeyEvent.VK_S, () -> onSave()));
+        fileMenu.add(createMenuItem("Load", KeyEvent.VK_R, () -> onLoad()));
         fileMenu.addSeparator();
         fileMenu.add(createMenuItem("Exit", KeyEvent.VK_Q, () -> onExit()));
 
-        JMenu editMenu = new JMenu("Edit");
-        editMenu.setMnemonic(KeyEvent.VK_E);
-        editMenu.add(createMenuItem("Add Product", KeyEvent.VK_N, () -> onAdd()));
-        editMenu.add(createMenuItem("Update Product", KeyEvent.VK_U, () -> onUpdate()));
-        editMenu.add(createMenuItem("Delete Product", KeyEvent.VK_D, () -> onDelete()));
-        editMenu.addSeparator();
-        editMenu.add(createMenuItem("Undo Last Action", KeyEvent.VK_Z, () -> onUndo()));
+        JMenu inventoryMenu = new JMenu("Inventory");
+        inventoryMenu.setMnemonic(KeyEvent.VK_I);
+        inventoryMenu.add(createMenuItem("Add Product", KeyEvent.VK_N, () -> onAdd()));
+        inventoryMenu.add(createMenuItem("Update Product", KeyEvent.VK_U, () -> onUpdate()));
+        inventoryMenu.add(createMenuItem("Delete Product", KeyEvent.VK_D, () -> onDelete()));
+
+        JMenu stockMenu = new JMenu("Stock");
+        stockMenu.setMnemonic(KeyEvent.VK_S);
+        stockMenu.add(createMenuItem("Stock In", KeyEvent.VK_I, () -> onStockIn()));
+        stockMenu.add(createMenuItem("Stock Out", KeyEvent.VK_O, () -> onStockOut()));
+        stockMenu.addSeparator();
+        stockMenu.add(createMenuItem("Undo Last Action", KeyEvent.VK_Z, () -> onUndo()));
 
         JMenu viewMenu = new JMenu("View");
         viewMenu.setMnemonic(KeyEvent.VK_V);
-        viewMenu.add(createMenuItem("Show All Products", KeyEvent.VK_A, () -> onShowAll()));
+        viewMenu.add(createMenuItem("Transaction History", KeyEvent.VK_H, () -> onHistory()));
+        viewMenu.add(createMenuItem("Show All", KeyEvent.VK_A, () -> onShowAll()));
         viewMenu.add(createMenuItem("Low-Stock Only", KeyEvent.VK_L, () -> onLowStockOnly()));
 
-        JMenu toolsMenu = new JMenu("Tools");
-        toolsMenu.setMnemonic(KeyEvent.VK_T);
-        toolsMenu.add(createMenuItem("Stock In", KeyEvent.VK_I, () -> onStockIn()));
-        toolsMenu.add(createMenuItem("Stock Out", KeyEvent.VK_O, () -> onStockOut()));
-        toolsMenu.addSeparator();
-        toolsMenu.add(createMenuItem("Transaction History", KeyEvent.VK_H, () -> onHistory()));
-
         menuBar.add(fileMenu);
-        menuBar.add(editMenu);
+        menuBar.add(inventoryMenu);
+        menuBar.add(stockMenu);
         menuBar.add(viewMenu);
-        menuBar.add(toolsMenu);
         return menuBar;
     }
 
-    private JPanel buildSearchAndSortPanel() {
-        JPanel top = new JPanel(new GridLayout(2, 1));
+    /**
+     * One band directly under the stat cards: the search/sort rows on the left,
+     * the action buttons right-aligned on the right.
+     */
+    private JPanel buildControlBandPanel() {
+        JPanel band = new JPanel(new BorderLayout(12, 0));
+        band.add(buildControlPanel(), BorderLayout.CENTER);
+        band.add(buildActionButtonsPanel(), BorderLayout.EAST);
+        return band;
+    }
 
-        JPanel searchRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
+    private JPanel buildControlPanel() {
+        JPanel controls = new JPanel(new GridLayout(2, 1, 0, 4));
+
+        JPanel searchRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
         searchTypeCombo = new JComboBox<>(SEARCH_TYPES);
         searchField = new JTextField(20);
         searchField.addActionListener(event -> onSearch());
         searchRow.add(new JLabel("Search:"));
         searchRow.add(searchTypeCombo);
         searchRow.add(searchField);
-        searchRow.add(createButton("Search", () -> onSearch()));
-        searchRow.add(createButton("Show All", () -> onShowAll()));
+        searchRow.add(createButton("Search", NEUTRAL_COLOR, () -> onSearch()));
+        searchRow.add(createButton("Show All", NEUTRAL_COLOR, () -> onShowAll()));
 
-        JPanel sortRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
-        sortFieldCombo = new JComboBox<>(SortAlgorithm.FIELDS);
+        JPanel sortRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
         sortOrderCombo = new JComboBox<>(SORT_ORDERS);
-        sortRow.add(new JLabel("Sort by:"));
-        sortRow.add(sortFieldCombo);
+        sortFieldCombo = new JComboBox<>(SortAlgorithm.FIELDS);
+        lowStockOnlyCheck = new JCheckBox("Low-Stock Only");
+        lowStockOnlyCheck.setOpaque(false);
+        lowStockOnlyCheck.addActionListener(event -> onLowStockFilterChanged());
+        sortRow.add(new JLabel("Sort:"));
         sortRow.add(sortOrderCombo);
-        sortRow.add(createButton("Sort", () -> onSort()));
-        sortRow.add(new JLabel("   "));
-        sortRow.add(createButton("Low-Stock Only", () -> onLowStockOnly()));
+        sortRow.add(sortFieldCombo);
+        sortRow.add(createButton("Sort", NEUTRAL_COLOR, () -> onSort()));
+        sortRow.add(lowStockOnlyCheck);
 
-        top.add(searchRow);
-        top.add(sortRow);
-        return top;
+        controls.add(searchRow);
+        controls.add(sortRow);
+        return controls;
     }
 
     private JPanel buildTablePanel() {
         JPanel panel = new JPanel(new BorderLayout());
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        table.setRowHeight(22);
+        table.setRowHeight(24);
         table.setFillsViewportHeight(true);
+        table.setGridColor(new Color(0xE2E8F0));
         table.getTableHeader().setReorderingAllowed(false);
+        table.getTableHeader().setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
 
+        int[] widths = {70, 220, 130, 90, 90, 90};
         LowStockRenderer renderer = new LowStockRenderer();
         for (int i = 0; i < table.getColumnCount(); i++) {
+            table.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
             table.getColumnModel().getColumn(i).setCellRenderer(renderer);
         }
 
@@ -210,32 +258,58 @@ public class MainFrame extends JFrame {
         return panel;
     }
 
-    private JPanel buildActionsAndStatusPanel() {
-        JPanel bottom = new JPanel(new BorderLayout());
+    private JPanel buildStatCardsPanel() {
+        productCountLabel = new JLabel("0");
+        valueLabel = new JLabel("P0.00");
+        lowStockLabel = new JLabel("0");
+        outOfStockLabel = new JLabel("0");
 
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
-        actions.add(createButton("Add Product", () -> onAdd()));
-        actions.add(createButton("Update Product", () -> onUpdate()));
-        actions.add(createButton("Delete Product", () -> onDelete()));
-        actions.add(createButton("Stock In", () -> onStockIn()));
-        actions.add(createButton("Stock Out", () -> onStockOut()));
-        actions.add(createButton("Undo Last Action", () -> onUndo()));
-
-        JPanel status = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 4));
-        itemsLabel = new JLabel();
-        valueLabel = new JLabel();
-        lowStockLabel = new JLabel();
-        status.add(itemsLabel);
-        status.add(valueLabel);
-        status.add(lowStockLabel);
-
-        bottom.add(actions, BorderLayout.WEST);
-        bottom.add(status, BorderLayout.EAST);
-        return bottom;
+        JPanel cards = new JPanel(new GridLayout(1, 4, 10, 10));
+        cards.add(createStatCard("Total Products", productCountLabel, CARD_GREEN, CARD_GREEN_TEXT));
+        cards.add(createStatCard("Total Value", valueLabel, CARD_BLUE, CARD_BLUE_TEXT));
+        cards.add(createStatCard("Low Stock", lowStockLabel, CARD_RED, CARD_RED_TEXT));
+        cards.add(createStatCard("Out of Stock", outOfStockLabel, CARD_AMBER, CARD_AMBER_TEXT));
+        return cards;
     }
 
-    private JButton createButton(String text, Runnable action) {
-        JButton button = new JButton(text);
+    /** One rounded card: small title on top, big colored value underneath. */
+    private RoundedPanel createStatCard(String title, JLabel valueLabel, Color background, Color valueColor) {
+        JLabel titleLabel = new JLabel(title);
+        titleLabel.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
+        titleLabel.setForeground(CARD_TITLE_TEXT);
+        valueLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 20));
+        valueLabel.setForeground(valueColor);
+
+        RoundedPanel card = new RoundedPanel(background, 16);
+        card.setLayout(new GridLayout(2, 1, 0, 2));
+        card.setBorder(BorderFactory.createEmptyBorder(10, 14, 10, 14));
+        card.add(titleLabel);
+        card.add(valueLabel);
+        return card;
+    }
+
+    /** Action buttons for the right side of the band, aligned to its east edge. */
+    private JPanel buildActionButtonsPanel() {
+        JPanel firstRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 2));
+        firstRow.add(createButton("Stock In", NEUTRAL_COLOR, () -> onStockIn()));
+        firstRow.add(createButton("Stock Out", NEUTRAL_COLOR, () -> onStockOut()));
+        firstRow.add(createButton("Undo", NEUTRAL_COLOR, () -> onUndo()));
+
+        JPanel secondRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 2));
+        secondRow.add(createButton("Read", READ_COLOR, () -> onRead()));
+        secondRow.add(createButton("Delete", DELETE_COLOR, () -> onDelete()));
+        secondRow.add(createButton("Edit", EDIT_COLOR, () -> onUpdate()));
+        secondRow.add(createButton("Add", ADD_COLOR, () -> onAdd()));
+
+        JPanel rows = new JPanel(new GridLayout(2, 1));
+        rows.add(firstRow);
+        rows.add(secondRow);
+        return rows;
+    }
+
+    /** Every button on the window is built here; only the color changes. */
+    private JButton createButton(String text, Color baseColor, Runnable action) {
+        JButton button = new RoundedButton(text, baseColor);
         button.addActionListener(event -> action.run());
         return button;
     }
@@ -263,7 +337,7 @@ public class MainFrame extends JFrame {
     private void onUpdate() {
         Product selected = getSelectedProduct();
         if (selected == null) {
-            showError("Please select a product in the table first.");
+            showError("Select a product first.");
             return;
         }
         ProductDialog dialog = new ProductDialog(this, service, selected);
@@ -274,10 +348,28 @@ public class MainFrame extends JFrame {
         }
     }
 
+    /** Read: shows every field of the selected product without opening a form. */
+    private void onRead() {
+        Product selected = getSelectedProduct();
+        if (selected == null) {
+            showError("Select a product first.");
+            return;
+        }
+        String message = "ID: " + selected.getId() + System.lineSeparator()
+                + "Product: " + selected.getName() + System.lineSeparator()
+                + "Category: " + selected.getCategory() + System.lineSeparator()
+                + "Price: " + String.format("%.2f", selected.getPrice()) + System.lineSeparator()
+                + "Quantity: " + selected.getQuantity() + System.lineSeparator()
+                + "Reorder Level: " + selected.getReorderLevel() + System.lineSeparator()
+                + "Status: " + statusOf(selected);
+        JOptionPane.showMessageDialog(this, message, "Product Details",
+                JOptionPane.INFORMATION_MESSAGE);
+    }
+
     private void onDelete() {
         Product selected = getSelectedProduct();
         if (selected == null) {
-            showError("Please select a product in the table first.");
+            showError("Select a product first.");
             return;
         }
         int choice = JOptionPane.showConfirmDialog(this,
@@ -306,7 +398,7 @@ public class MainFrame extends JFrame {
     private void stockDialog(boolean stockIn) {
         Product selected = getSelectedProduct();
         if (selected == null) {
-            showError("Please select a product in the table first.");
+            showError("Select a product first.");
             return;
         }
         StockDialog dialog = new StockDialog(this, service, selected, stockIn);
@@ -394,16 +486,32 @@ public class MainFrame extends JFrame {
         showProducts(service.sort(field, ascending));
     }
 
+    /** View menu entry: switches the filter on and shows the low-stock rows. */
     private void onLowStockOnly() {
         Product[] lowStock = service.getLowStockProducts();
         if (lowStock.length == 0) {
             showInfo("No low-stock products.");
             return;
         }
+        lowStockOnlyCheck.setSelected(true);
         showProducts(lowStock);
     }
 
+    /** The Low-Stock Only check box: filter while selected, full list when cleared. */
+    private void onLowStockFilterChanged() {
+        if (lowStockOnlyCheck.isSelected()) {
+            Product[] lowStock = service.getLowStockProducts();
+            showProducts(lowStock);
+            if (lowStock.length == 0) {
+                showInfo("No low-stock products.");
+            }
+        } else {
+            refreshTable();
+        }
+    }
+
     private void onShowAll() {
+        lowStockOnlyCheck.setSelected(false);
         searchField.setText("");
         refreshTable();
     }
@@ -437,10 +545,15 @@ public class MainFrame extends JFrame {
         }
     }
 
-    /** Reloads the full product list from the service and repaints the table. */
+    /** Reloads the product list from the service and repaints the table. */
     private void refreshTable() {
-        displayedProducts = service.getAllProducts();
+        displayedProducts = lowStockOnly() ? service.getLowStockProducts() : service.getAllProducts();
         fillTable();
+    }
+
+    /** True while the Low-Stock Only filter is switched on. */
+    private boolean lowStockOnly() {
+        return lowStockOnlyCheck != null && lowStockOnlyCheck.isSelected();
     }
 
     /** Shows a search/sort/low-stock result instead of the full list. */
@@ -457,19 +570,41 @@ public class MainFrame extends JFrame {
                 product.getId(),
                 product.getName(),
                 product.getCategory(),
-                Integer.valueOf(product.getQuantity()),
                 String.format("%.2f", product.getPrice()),
-                Integer.valueOf(product.getReorderLevel())
+                Integer.valueOf(product.getQuantity()),
+                statusOf(product)
             });
         }
         table.clearSelection();
         updateStatus();
     }
 
+    /** Display-only status text; it is never typed in or written to the files. */
+    private static String statusOf(Product product) {
+        if (product.getQuantity() == 0) {
+            return "Out";
+        }
+        return product.isLowStock() ? "Low" : "OK";
+    }
+
+    /** Refreshes the four stat cards; called from {@link #fillTable()}. */
     private void updateStatus() {
-        itemsLabel.setText("Products: " + service.getProductCount());
-        valueLabel.setText("Total value: " + String.format("%.2f", service.getInventoryValue()));
-        lowStockLabel.setText("Low stock: " + service.getLowStockCount());
+        productCountLabel.setText(String.valueOf(service.getProductCount()));
+        valueLabel.setText("P" + String.format("%.2f", service.getInventoryValue()));
+        lowStockLabel.setText(String.valueOf(service.getLowStockCount()));
+        outOfStockLabel.setText(String.valueOf(countOutOfStock()));
+    }
+
+    /** No getter exists for this, so it is counted here from the returned array. */
+    private int countOutOfStock() {
+        Product[] all = service.getAllProducts();
+        int count = 0;
+        for (int i = 0; i < all.length; i++) {
+            if (all[i].getQuantity() == 0) {
+                count++;
+            }
+        }
+        return count;
     }
 
     /** Maps the selected table row to the product it was built from. */
@@ -513,8 +648,11 @@ public class MainFrame extends JFrame {
                                                        boolean hasFocus, int row, int column) {
             Component component = super.getTableCellRendererComponent(source, value, isSelected,
                     hasFocus, row, column);
-            if (value instanceof Number) {
+            int modelColumn = source.convertColumnIndexToModel(column);
+            if (modelColumn == PRICE_COLUMN || modelColumn == QUANTITY_COLUMN) {
                 setHorizontalAlignment(SwingConstants.RIGHT);
+            } else if (modelColumn == STATUS_COLUMN) {
+                setHorizontalAlignment(SwingConstants.CENTER);
             } else {
                 setHorizontalAlignment(SwingConstants.LEFT);
             }
